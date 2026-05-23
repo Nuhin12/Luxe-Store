@@ -1,7 +1,7 @@
 const FormData = require('form-data');
 
-const SLIPOK_API_KEY = 'SLIPOKM37EF7F';
-const SLIPOK_BRANCH_ID = '66986';
+const SLIPOK_API_KEY = 'SLIPOKC7O4X5X';
+const SLIPOK_BRANCH_ID = '67047';
 
 exports.handler = async function(event) {
     const headers = {
