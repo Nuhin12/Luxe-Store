@@ -1,0 +1,7 @@
+[build]
+  functions = "netlify/functions"
+
+[[redirects]]
+  from = "/api/checkslip"
+  to = "/.netlify/functions/checkslip"
+  status = 200

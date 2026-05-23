@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LUXE Admin Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        const supabaseUrl = 'https://fbcclsnredkbiqyfrbcb.supabase.co';
+        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZiY2Nsc25yZWRrYmlxeWZyYmNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzNTY5MTksImV4cCI6MjA5NDkzMjkxOX0.k08h8iGU2xk_QIuw67y5kL3p3Z725xcLjLWSl9J0VgY';
+        const _supabase = supabase.createClient(supabaseUrl, supabaseAnonKey);
+        const ADMIN_EMAIL = 'ais0656041530@gmail.com';
+    </script>
+    <style>
+        body { font-family: 'Prompt', sans-serif; }
+        .sidebar-link { transition: all 0.2s; }
+        .sidebar-link:hover, .sidebar-link.active { background: rgba(255,255,255,0.12); }
+        .stat-card { transition: transform 0.2s, box-shadow 0.2s; }
+        .stat-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,102,255,0.1); }
+        .badge-pending { background:#FFF3CD; color:#856404; }
+        .badge-success { background:#D1FAE5; color:#065F46; }
+        .badge-reject  { background:#FEE2E2; color:#991B1B; }
+        .badge-process { background:#DBEAFE; color:#1E40AF; }
+        .fade-in { animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 999px; }
+    </style>
+</head>
+<body class="bg-[#F1F5F9] text-gray-800 min-h-screen">
+
+<!-- LOGIN SCREEN -->
+<div id="login-screen" class="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0066FF] to-blue-800 p-4">
+    <div class="bg-white rounded-3xl p-8 w-full max-w-sm shadow-2xl">
+        <div class="text-center mb-8">
+            <div class="text-3xl font-black text-[#0066FF] mb-1">LUXE</div>
+            <div class="text-xs font-bold text-gray-400 uppercase tracking-widest">Admin Panel</div>
+        </div>
+        <div class="space-y-3">
+            <div>
+                <label class="text-xs font-bold text-gray-400 block mb-1">อีเมลแอดมิน</label>
+                <input type="email" id="admin-email" placeholder="admin@email.com"
+                    class="w-full bg-gray-50 border border-gray-200 px-4 py-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0066FF]">
+            </div>
+            <div>
+                <label class="text-xs font-bold text-gray-400 block mb-1">รหัสผ่าน</label>
+                <input type="password" id="admin-password" placeholder="Password"
+                    class="w-full bg-gray-50 border border-gray-200 px-4 py-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0066FF]"
+                    onkeydown="if(event.key==='Enter') adminLogin()">
+            </div>
+            <button onclick="adminLogin()" class="w-full bg-[#0066FF] text-white py-2.5 rounded-xl text-sm font-bold hover:bg-blue-700 transition shadow-sm mt-2">
+                เข้าสู่ระบบแอดมิน
+            </button>
+        </div>
+        <p id="login-error" class="text-red-500 text-xs font-bold text-center mt-3 hidden"></p>
+    </div>
+</div>
+
+<!-- ADMIN PANEL -->
+<div id="admin-panel" class="hidden min-h-screen flex">
+
+    <!-- SIDEBAR -->
+    <aside class="w-60 bg-[#0A1628] text-white flex flex-col shrink-0 fixed h-full z-40">
+        <div class="p-6 border-b border-white/10">
+            <div class="text-xl font-black text-white">LUXE</div>
+            <div class="text-[10px] font-bold text-white/40 uppercase tracking-widest mt-0.5">Admin Dashboard</div>
+        </div>
+
+        <nav class="flex-1 p-4 space-y-1 overflow-y-auto">
+            <button onclick="showSection('dashboard')" id="nav-dashboard" class="sidebar-link active w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-3 text-white/90">
+                <i class="fa-solid fa-chart-pie w-4 text-center text-[#0066FF]"></i> Dashboard
+            </button>
+            <button onclick="showSection('users')" id="nav-users" class="sidebar-link w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-3 text-white/60">
+                <i class="fa-solid fa-users w-4 text-center"></i> จัดการผู้ใช้
+            </button>
+            <button onclick="showSection('orders')" id="nav-orders" class="sidebar-link w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-3 text-white/60">
+                <i class="fa-solid fa-basket-shopping w-4 text-center"></i> ออเดอร์ทั้งหมด
+                <span id="badge-orders" class="ml-auto bg-red-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full hidden">0</span>
+            </button>
+            <button onclick="showSection('topup')" id="nav-topup" class="sidebar-link w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-3 text-white/60">
+                <i class="fa-solid fa-money-bill-wave w-4 text-center"></i> อนุมัติเติมเงิน
+                <span id="badge-topup" class="ml-auto bg-amber-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full hidden">0</span>
+            </button>
+        </nav>
+
+        <div class="p-4 border-t border-white/10">
+            <div class="flex items-center gap-3 px-2 mb-3">
+                <div class="w-8 h-8 rounded-lg bg-[#0066FF] flex items-center justify-center text-xs font-black">A</div>
+                <div>
+                    <div class="text-xs font-bold text-white/90">Admin</div>
+                    <div class="text-[10px] text-white/40 truncate w-32" id="admin-email-display"></div>
+                </div>
+            </div>
+            <button onclick="adminLogout()" class="w-full text-left px-4 py-2 rounded-xl text-xs font-bold text-red-400 hover:bg-red-500/10 flex items-center gap-2 transition">
+                <i class="fa-solid fa-right-from-bracket"></i> ออกจากระบบ
+            </button>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="ml-60 flex-1 p-6 overflow-y-auto min-h-screen">
+
+        <!-- DASHBOARD -->
+        <div id="section-dashboard" class="fade-in">
+            <h1 class="text-lg font-black text-gray-800 mb-1">Dashboard</h1>
+            <p class="text-xs text-gray-400 mb-6">ภาพรวมระบบทั้งหมด</p>
+
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div class="stat-card bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="w-9 h-9 bg-blue-50 rounded-xl flex items-center justify-center">
+                            <i class="fa-solid fa-users text-[#0066FF] text-sm"></i>
+                        </div>
+                    </div>
+                    <div id="dash-users" class="text-2xl font-black text-gray-800">-</div>
+                    <div class="text-xs text-gray-400 mt-0.5">ผู้ใช้ทั้งหมด</div>
+                </div>
+                <div class="stat-card bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="w-9 h-9 bg-green-50 rounded-xl flex items-center justify-center">
+                            <i class="fa-solid fa-basket-shopping text-green-500 text-sm"></i>
+                        </div>
+                    </div>
+                    <div id="dash-orders" class="text-2xl font-black text-gray-800">-</div>
+                    <div class="text-xs text-gray-400 mt-0.5">ออเดอร์ทั้งหมด</div>
+                </div>
+                <div class="stat-card bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="w-9 h-9 bg-amber-50 rounded-xl flex items-center justify-center">
+                            <i class="fa-solid fa-clock text-amber-500 text-sm"></i>
+                        </div>
+                    </div>
+                    <div id="dash-pending-topup" class="text-2xl font-black text-gray-800">-</div>
+                    <div class="text-xs text-gray-400 mt-0.5">รออนุมัติเติมเงิน</div>
+                </div>
+                <div class="stat-card bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="w-9 h-9 bg-purple-50 rounded-xl flex items-center justify-center">
+                            <i class="fa-solid fa-coins text-purple-500 text-sm"></i>
+                        </div>
+                    </div>
+                    <div id="dash-total-topup" class="text-2xl font-black text-gray-800">-</div>
+                    <div class="text-xs text-gray-400 mt-0.5">ยอดเติมเงินรวม (฿)</div>
+                </div>
+            </div>
+
+            <!-- Recent Orders -->
+            <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-4">
+                <div class="px-5 py-4 border-b border-gray-50 flex items-center justify-between">
+                    <h2 class="font-bold text-sm text-gray-800">ออเดอร์ล่าสุด</h2>
+                    <button onclick="showSection('orders')" class="text-xs text-[#0066FF] font-bold hover:underline">ดูทั้งหมด</button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs">
+                        <thead><tr class="bg-slate-50 text-gray-400 font-bold border-b border-gray-100">
+                            <th class="p-3 text-left">ผู้ใช้</th>
+                            <th class="p-3 text-left">สินค้า</th>
+                            <th class="p-3 text-left">ราคา</th>
+                            <th class="p-3 text-left">สถานะ</th>
+                        </tr></thead>
+                        <tbody id="dash-recent-orders"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Recent Topup -->
+            <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div class="px-5 py-4 border-b border-gray-50 flex items-center justify-between">
+                    <h2 class="font-bold text-sm text-gray-800">การเติมเงินล่าสุด</h2>
+                    <button onclick="showSection('topup')" class="text-xs text-[#0066FF] font-bold hover:underline">ดูทั้งหมด</button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs">
+                        <thead><tr class="bg-slate-50 text-gray-400 font-bold border-b border-gray-100">
+                            <th class="p-3 text-left">User ID</th>
+                            <th class="p-3 text-left">ช่องทาง</th>
+                            <th class="p-3 text-left">จำนวน</th>
+                            <th class="p-3 text-left">สถานะ</th>
+                        </tr></thead>
+                        <tbody id="dash-recent-topup"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- USERS -->
+        <div id="section-users" class="fade-in hidden">
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h1 class="text-lg font-black text-gray-800 mb-1">จัดการผู้ใช้</h1>
+                    <p class="text-xs text-gray-400">ดูและแก้ไขข้อมูลผู้ใช้ทั้งหมด</p>
+                </div>
+                <button onclick="loadUsers()" class="bg-white border border-gray-200 text-gray-600 text-xs font-bold px-4 py-2 rounded-xl hover:bg-gray-50 transition flex items-center gap-2">
+                    <i class="fa-solid fa-rotate-right"></i> รีเฟรช
+                </button>
+            </div>
+
+            <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs">
+                        <thead><tr class="bg-slate-50 text-gray-400 font-bold border-b border-gray-100">
+                            <th class="p-4 text-left">#</th>
+                            <th class="p-4 text-left">User ID</th>
+                            <th class="p-4 text-left">Username</th>
+                            <th class="p-4 text-left">เครดิต</th>
+                            <th class="p-4 text-left">วันที่สมัคร</th>
+                            <th class="p-4 text-center">จัดการ</th>
+                        </tr></thead>
+                        <tbody id="users-table-body">
+                            <tr><td colspan="6" class="p-8 text-center text-gray-400">กำลังโหลด...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ORDERS -->
+        <div id="section-orders" class="fade-in hidden">
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h1 class="text-lg font-black text-gray-800 mb-1">ออเดอร์ทั้งหมด</h1>
+                    <p class="text-xs text-gray-400">จัดการและอัปเดตสถานะออเดอร์</p>
+                </div>
+                <button onclick="loadOrders()" class="bg-white border border-gray-200 text-gray-600 text-xs font-bold px-4 py-2 rounded-xl hover:bg-gray-50 transition flex items-center gap-2">
+                    <i class="fa-solid fa-rotate-right"></i> รีเฟรช
+                </button>
+            </div>
+
+            <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs">
+                        <thead><tr class="bg-slate-50 text-gray-400 font-bold border-b border-gray-100">
+                            <th class="p-4 text-center">ออเดอร์</th>
+                            <th class="p-4 text-left">User ID</th>
+                            <th class="p-4 text-left">สินค้า</th>
+                            <th class="p-4 text-left">ราคา</th>
+                            <th class="p-4 text-left">วันที่</th>
+                            <th class="p-4 text-center">สถานะ</th>
+                            <th class="p-4 text-center">เปลี่ยนสถานะ</th>
+                        </tr></thead>
+                        <tbody id="orders-table-body">
+                            <tr><td colspan="7" class="p-8 text-center text-gray-400">กำลังโหลด...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TOPUP -->
+        <div id="section-topup" class="fade-in hidden">
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h1 class="text-lg font-black text-gray-800 mb-1">อนุมัติการเติมเงิน</h1>
+                    <p class="text-xs text-gray-400">ตรวจสอบและอนุมัติคำขอเติมเงินจากผู้ใช้</p>
+                </div>
+                <button onclick="loadTopups()" class="bg-white border border-gray-200 text-gray-600 text-xs font-bold px-4 py-2 rounded-xl hover:bg-gray-50 transition flex items-center gap-2">
+                    <i class="fa-solid fa-rotate-right"></i> รีเฟรช
+                </button>
+            </div>
+
+            <!-- Filter -->
+            <div class="flex gap-2 mb-4">
+                <button onclick="filterTopup('all')" id="filter-all" class="px-4 py-1.5 rounded-full text-xs font-bold bg-[#0066FF] text-white transition">ทั้งหมด</button>
+                <button onclick="filterTopup('รอตรวจสอบ')" id="filter-pending" class="px-4 py-1.5 rounded-full text-xs font-bold bg-white border border-gray-200 text-gray-600 transition">รอตรวจสอบ</button>
+                <button onclick="filterTopup('สำเร็จ')" id="filter-success" class="px-4 py-1.5 rounded-full text-xs font-bold bg-white border border-gray-200 text-gray-600 transition">สำเร็จ</button>
+                <button onclick="filterTopup('ปฏิเสธ')" id="filter-reject" class="px-4 py-1.5 rounded-full text-xs font-bold bg-white border border-gray-200 text-gray-600 transition">ปฏิเสธ</button>
+            </div>
+
+            <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs">
+                        <thead><tr class="bg-slate-50 text-gray-400 font-bold border-b border-gray-100">
+                            <th class="p-4 text-center">#</th>
+                            <th class="p-4 text-left">User ID</th>
+                            <th class="p-4 text-left">ช่องทาง</th>
+                            <th class="p-4 text-left">จำนวนเงิน</th>
+                            <th class="p-4 text-left">Credits</th>
+                            <th class="p-4 text-left">วันที่</th>
+                            <th class="p-4 text-center">สถานะ</th>
+                            <th class="p-4 text-center">อนุมัติ / ปฏิเสธ</th>
+                        </tr></thead>
+                        <tbody id="topup-table-body">
+                            <tr><td colspan="8" class="p-8 text-center text-gray-400">กำลังโหลด...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+</div>
+
+<!-- MODAL: แก้ไขเครดิต User -->
+<div id="edit-credit-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-[200] flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+        <h3 class="font-black text-gray-800 text-base mb-1">แก้ไขเครดิต</h3>
+        <p id="edit-credit-user-label" class="text-xs text-gray-400 mb-4"></p>
+        <input type="number" id="edit-credit-input" placeholder="จำนวน Credits ใหม่" min="0"
+            class="w-full bg-gray-50 border border-gray-200 px-4 py-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0066FF] mb-3">
+        <div class="flex gap-2">
+            <button onclick="saveEditCredit()" class="flex-1 bg-[#0066FF] text-white py-2.5 rounded-xl text-sm font-bold hover:bg-blue-700 transition">บันทึก</button>
+            <button onclick="closeEditCreditModal()" class="flex-1 bg-gray-100 text-gray-600 py-2.5 rounded-xl text-sm font-bold hover:bg-gray-200 transition">ยกเลิก</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let adminUser = null;
+    let editingUserId = null;
+    let allTopups = [];
+
+    // ========== AUTH ==========
+    async function adminLogin() {
+        const email = document.getElementById('admin-email').value.trim();
+        const password = document.getElementById('admin-password').value;
+        const errEl = document.getElementById('login-error');
+
+        if (!email || !password) {
+            errEl.innerText = '⚠️ กรุณากรอกอีเมลและรหัสผ่าน';
+            errEl.classList.remove('hidden');
+            return;
+        }
+
+        if (email !== ADMIN_EMAIL) {
+            errEl.innerText = '❌ อีเมลนี้ไม่มีสิทธิ์เข้าใช้งาน Admin Panel';
+            errEl.classList.remove('hidden');
+            return;
+        }
+
+        try {
+            const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
+            if (error) throw error;
+
+            adminUser = data.user;
+            document.getElementById('admin-email-display').innerText = email;
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('admin-panel').classList.remove('hidden');
+            loadDashboard();
+        } catch (e) {
+            errEl.innerText = '❌ อีเมลหรือรหัสผ่านไม่ถูกต้อง';
+            errEl.classList.remove('hidden');
+        }
+    }
+
+    async function adminLogout() {
+        if (confirm('ต้องการออกจากระบบ Admin ใช่หรือไม่?')) {
+            await _supabase.auth.signOut();
+            location.reload();
+        }
+    }
+
+    // Check existing session
+    window.addEventListener('DOMContentLoaded', async () => {
+        const { data: { session } } = await _supabase.auth.getSession();
+        if (session && session.user.email === ADMIN_EMAIL) {
+            adminUser = session.user;
+            document.getElementById('admin-email-display').innerText = session.user.email;
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('admin-panel').classList.remove('hidden');
+            loadDashboard();
+        }
+    });
+
+    // ========== NAVIGATION ==========
+    function showSection(name) {
+        ['dashboard','users','orders','topup'].forEach(s => {
+            document.getElementById('section-' + s).classList.add('hidden');
+            const nav = document.getElementById('nav-' + s);
+            nav.classList.remove('active');
+            nav.classList.add('text-white/60');
+            nav.classList.remove('text-white/90');
+        });
+        document.getElementById('section-' + name).classList.remove('hidden');
+        const activeNav = document.getElementById('nav-' + name);
+        activeNav.classList.add('active', 'text-white/90');
+        activeNav.classList.remove('text-white/60');
+
+        if (name === 'users') loadUsers();
+        if (name === 'orders') loadOrders();
+        if (name === 'topup') loadTopups();
+    }
+
+    // ========== DASHBOARD ==========
+    async function loadDashboard() {
+        try {
+            // Count users
+            const { count: userCount } = await _supabase.from('profiles').select('*', { count: 'exact', head: true });
+            document.getElementById('dash-users').innerText = (userCount || 0).toLocaleString();
+
+            // Count orders
+            const { count: orderCount } = await _supabase.from('orders').select('*', { count: 'exact', head: true });
+            document.getElementById('dash-orders').innerText = (orderCount || 0).toLocaleString();
+
+            // Count pending topup
+            const { count: pendingCount } = await _supabase.from('topup_history')
+                .select('*', { count: 'exact', head: true }).eq('status', 'รอตรวจสอบ');
+            document.getElementById('dash-pending-topup').innerText = (pendingCount || 0).toLocaleString();
+
+            // Update badge
+            if (pendingCount > 0) {
+                document.getElementById('badge-topup').innerText = pendingCount;
+                document.getElementById('badge-topup').classList.remove('hidden');
+            }
+
+            // Sum total topup
+            const { data: topupData } = await _supabase.from('topup_history')
+                .select('amount').eq('status', 'สำเร็จ');
+            const total = topupData ? topupData.reduce((s, r) => s + (r.amount || 0), 0) : 0;
+            document.getElementById('dash-total-topup').innerText = total.toLocaleString();
+
+            // Recent orders
+            const { data: recentOrders } = await _supabase.from('orders')
+                .select('*').order('id', { ascending: false }).limit(5);
+            const tbody1 = document.getElementById('dash-recent-orders');
+            if (recentOrders && recentOrders.length > 0) {
+                tbody1.innerHTML = recentOrders.map(o => `
+                    <tr class="border-b border-gray-50 hover:bg-slate-50/50">
+                        <td class="p-3 text-gray-500 font-mono">${o.user_id.slice(0,8)}...</td>
+                        <td class="p-3 font-bold text-gray-800">${o.product_name}</td>
+                        <td class="p-3 text-[#0066FF] font-bold">${o.price} Credits</td>
+                        <td class="p-3"><span class="badge-process px-2 py-0.5 rounded-md font-bold text-[10px]">${o.status}</span></td>
+                    </tr>`).join('');
+            } else {
+                tbody1.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-gray-400">ยังไม่มีออเดอร์</td></tr>`;
+            }
+
+            // Recent topup
+            const { data: recentTopup } = await _supabase.from('topup_history')
+                .select('*').order('id', { ascending: false }).limit(5);
+            const tbody2 = document.getElementById('dash-recent-topup');
+            if (recentTopup && recentTopup.length > 0) {
+                tbody2.innerHTML = recentTopup.map(t => {
+                    const cls = t.status === 'สำเร็จ' ? 'badge-success' : t.status === 'ปฏิเสธ' ? 'badge-reject' : 'badge-pending';
+                    return `
+                    <tr class="border-b border-gray-50 hover:bg-slate-50/50">
+                        <td class="p-3 text-gray-500 font-mono">${t.user_id.slice(0,8)}...</td>
+                        <td class="p-3 text-gray-700">${t.method || '-'}</td>
+                        <td class="p-3 font-bold text-gray-800">${t.amount} ฿</td>
+                        <td class="p-3"><span class="${cls} px-2 py-0.5 rounded-md font-bold text-[10px]">${t.status}</span></td>
+                    </tr>`;
+                }).join('');
+            } else {
+                tbody2.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-gray-400">ยังไม่มีข้อมูล</td></tr>`;
+            }
+
+        } catch (e) {
+            console.error('Dashboard error:', e);
+        }
+    }
+
+    // ========== USERS ==========
+    async function loadUsers() {
+        const tbody = document.getElementById('users-table-body');
+        tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-gray-400">กำลังโหลด...</td></tr>`;
+        try {
+            const { data: profiles, error } = await _supabase
+                .from('profiles').select('*').order('id', { ascending: false });
+            if (error) throw error;
+
+            if (!profiles || profiles.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-gray-400">ยังไม่มีผู้ใช้</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = profiles.map((p, i) => `
+                <tr class="border-b border-gray-50 hover:bg-slate-50/50 transition">
+                    <td class="p-4 text-gray-400 font-bold">${i + 1}</td>
+                    <td class="p-4 text-gray-500 font-mono text-[10px]">${p.id.slice(0,12)}...</td>
+                    <td class="p-4 font-bold text-gray-800">${p.username || '-'}</td>
+                    <td class="p-4 font-black text-[#0066FF]">${(p.credits || 0).toLocaleString()} Credits</td>
+                    <td class="p-4 text-gray-400">${p.created_at ? new Date(p.created_at).toLocaleDateString('th-TH') : '-'}</td>
+                    <td class="p-4 text-center">
+                        <button onclick="openEditCredit('${p.id}', ${p.credits || 0}, '${p.username || p.id.slice(0,8)}')"
+                            class="bg-blue-50 text-[#0066FF] px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-blue-100 transition">
+                            <i class="fa-solid fa-coins mr-1"></i>แก้ Credits
+                        </button>
+                    </td>
+                </tr>`).join('');
+        } catch (e) {
+            tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-red-400">เกิดข้อผิดพลาด: ${e.message}</td></tr>`;
+        }
+    }
+
+    function openEditCredit(userId, currentCredits, username) {
+        editingUserId = userId;
+        document.getElementById('edit-credit-user-label').innerText = `ผู้ใช้: ${username} | เครดิตปัจจุบัน: ${currentCredits}`;
+        document.getElementById('edit-credit-input').value = currentCredits;
+        document.getElementById('edit-credit-modal').classList.remove('hidden');
+    }
+
+    function closeEditCreditModal() {
+        document.getElementById('edit-credit-modal').classList.add('hidden');
+        editingUserId = null;
+    }
+
+    async function saveEditCredit() {
+        const newCredits = parseFloat(document.getElementById('edit-credit-input').value);
+        if (isNaN(newCredits) || newCredits < 0) {
+            alert('⚠️ กรุณากรอกจำนวน Credits ให้ถูกต้อง');
+            return;
+        }
+        try {
+            const { error } = await _supabase.from('profiles')
+                .update({ credits: newCredits }).eq('id', editingUserId);
+            if (error) throw error;
+            alert(`✅ อัปเดต Credits เป็น ${newCredits} สำเร็จแล้วครับ!`);
+            closeEditCreditModal();
+            loadUsers();
+        } catch (e) {
+            alert('❌ เกิดข้อผิดพลาด: ' + e.message);
+        }
+    }
+
+    // ========== ORDERS ==========
+    const ORDER_STATUSES = ['กำลังเตรียมระบบ', 'กำลังดำเนินการ', 'เสร็จสิ้น', 'ยกเลิก'];
+
+    async function loadOrders() {
+        const tbody = document.getElementById('orders-table-body');
+        tbody.innerHTML = `<tr><td colspan="7" class="p-8 text-center text-gray-400">กำลังโหลด...</td></tr>`;
+        try {
+            const { data: orders, error } = await _supabase
+                .from('orders').select('*').order('id', { ascending: false });
+            if (error) throw error;
+
+            // Update badge
+            const processing = orders ? orders.filter(o => o.status === 'กำลังเตรียมระบบ').length : 0;
+            if (processing > 0) {
+                document.getElementById('badge-orders').innerText = processing;
+                document.getElementById('badge-orders').classList.remove('hidden');
+            } else {
+                document.getElementById('badge-orders').classList.add('hidden');
+            }
+
+            if (!orders || orders.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="p-8 text-center text-gray-400">ยังไม่มีออเดอร์</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = orders.map(o => {
+                const date = new Date(o.created_at).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+                const statusOpts = ORDER_STATUSES.map(s =>
+                    `<option value="${s}" ${o.status === s ? 'selected' : ''}>${s}</option>`).join('');
+                const cls = o.status === 'เสร็จสิ้น' ? 'badge-success' : o.status === 'ยกเลิก' ? 'badge-reject' : 'badge-process';
+                return `
+                <tr class="border-b border-gray-50 hover:bg-slate-50/50 transition">
+                    <td class="p-4 text-center font-bold text-gray-400">#${o.id}</td>
+                    <td class="p-4 font-mono text-gray-500 text-[10px]">${o.user_id.slice(0,10)}...</td>
+                    <td class="p-4 font-bold text-gray-800">${o.product_name}</td>
+                    <td class="p-4 font-black text-[#0066FF]">${o.price} Credits</td>
+                    <td class="p-4 text-gray-400">${date}</td>
+                    <td class="p-4 text-center"><span class="${cls} px-2.5 py-1 rounded-lg font-bold text-[10px]">${o.status}</span></td>
+                    <td class="p-4 text-center">
+                        <select onchange="updateOrderStatus(${o.id}, this.value)"
+                            class="text-[10px] font-bold border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-[#0066FF]">
+                            ${statusOpts}
+                        </select>
+                    </td>
+                </tr>`;
+            }).join('');
+        } catch (e) {
+            tbody.innerHTML = `<tr><td colspan="7" class="p-8 text-center text-red-400">เกิดข้อผิดพลาด: ${e.message}</td></tr>`;
+        }
+    }
+
+    async function updateOrderStatus(orderId, newStatus) {
+        try {
+            const { error } = await _supabase.from('orders')
+                .update({ status: newStatus }).eq('id', orderId);
+            if (error) throw error;
+            // Reload silently
+            loadOrders();
+        } catch (e) {
+            alert('❌ เกิดข้อผิดพลาดในการอัปเดตสถานะ: ' + e.message);
+        }
+    }
+
+    // ========== TOPUP ==========
+    async function loadTopups() {
+        const tbody = document.getElementById('topup-table-body');
+        tbody.innerHTML = `<tr><td colspan="8" class="p-8 text-center text-gray-400">กำลังโหลด...</td></tr>`;
+        try {
+            const { data: topups, error } = await _supabase
+                .from('topup_history').select('*').order('id', { ascending: false });
+            if (error) throw error;
+
+            allTopups = topups || [];
+            renderTopups(allTopups);
+
+            // Update badge
+            const pending = allTopups.filter(t => t.status === 'รอตรวจสอบ').length;
+            if (pending > 0) {
+                document.getElementById('badge-topup').innerText = pending;
+                document.getElementById('badge-topup').classList.remove('hidden');
+            } else {
+                document.getElementById('badge-topup').classList.add('hidden');
+            }
+
+        } catch (e) {
+            tbody.innerHTML = `<tr><td colspan="8" class="p-8 text-center text-red-400">เกิดข้อผิดพลาด: ${e.message}</td></tr>`;
+        }
+    }
+
+    function filterTopup(status) {
+        ['all','pending','success','reject'].forEach(id => {
+            const btn = document.getElementById('filter-' + id);
+            btn.className = 'px-4 py-1.5 rounded-full text-xs font-bold bg-white border border-gray-200 text-gray-600 transition';
+        });
+        const activeId = status === 'all' ? 'all' : status === 'รอตรวจสอบ' ? 'pending' : status === 'สำเร็จ' ? 'success' : 'reject';
+        document.getElementById('filter-' + activeId).className = 'px-4 py-1.5 rounded-full text-xs font-bold bg-[#0066FF] text-white transition';
+
+        const filtered = status === 'all' ? allTopups : allTopups.filter(t => t.status === status);
+        renderTopups(filtered);
+    }
+
+    function renderTopups(topups) {
+        const tbody = document.getElementById('topup-table-body');
+        if (!topups || topups.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="8" class="p-8 text-center text-gray-400">ไม่มีรายการ</td></tr>`;
+            return;
+        }
+        tbody.innerHTML = topups.map(t => {
+            const date = new Date(t.created_at).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+            const cls = t.status === 'สำเร็จ' ? 'badge-success' : t.status === 'ปฏิเสธ' ? 'badge-reject' : 'badge-pending';
+            const isPending = t.status === 'รอตรวจสอบ';
+            return `
+            <tr class="border-b border-gray-50 hover:bg-slate-50/50 transition">
+                <td class="p-4 text-center font-bold text-gray-400">#${t.id}</td>
+                <td class="p-4 font-mono text-gray-500 text-[10px]">${t.user_id.slice(0,10)}...</td>
+                <td class="p-4 text-gray-700 font-medium">${t.method || 'สลิปโอนเงิน'}</td>
+                <td class="p-4 font-black text-gray-800">${t.amount} ฿</td>
+                <td class="p-4 font-bold text-[#0066FF]">+${t.credits_added} Credits</td>
+                <td class="p-4 text-gray-400 text-[10px]">${date}</td>
+                <td class="p-4 text-center"><span class="${cls} px-2.5 py-1 rounded-lg font-bold text-[10px]">${t.status}</span></td>
+                <td class="p-4 text-center">
+                    ${isPending ? `
+                    <div class="flex gap-1.5 justify-center">
+                        <button onclick="approveTopup(${t.id}, '${t.user_id}')"
+                            class="bg-green-50 text-green-600 px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-green-100 transition">
+                            <i class="fa-solid fa-check mr-1"></i>อนุมัติ
+                        </button>
+                        <button onclick="rejectTopup(${t.id})"
+                            class="bg-red-50 text-red-500 px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-red-100 transition">
+                            <i class="fa-solid fa-xmark mr-1"></i>ปฏิเสธ
+                        </button>
+                    </div>` : `<span class="text-gray-300 text-[10px]">ดำเนินการแล้ว</span>`}
+                </td>
+            </tr>`;
+        }).join('');
+    }
+
+    async function approveTopup(topupId, userId) {
+        // แอดมินกรอกจำนวนเงินจริงจากสลิปที่ตรวจแล้ว
+        const amountStr = prompt('💰 กรอกจำนวนเงินในสลิป (บาท) ที่ตรวจสอบแล้ว:\n(1 บาท = 1 Credit)');
+        if (!amountStr) return;
+        const amount = parseFloat(amountStr);
+        if (isNaN(amount) || amount <= 0) {
+            alert('⚠️ จำนวนเงินไม่ถูกต้อง');
+            return;
+        }
+        const creditsToAdd = amount;
+
+        if (!confirm(`✅ ยืนยันอนุมัติ ${amount} บาท = +${creditsToAdd} Credits ให้ผู้ใช้นี้?`)) return;
+
+        try {
+            // ดึง credits ปัจจุบัน
+            const { data: profile } = await _supabase.from('profiles').select('credits').eq('id', userId).single();
+            const currentCredits = profile ? profile.credits : 0;
+            const newCredits = currentCredits + creditsToAdd;
+
+            // อัปเดต credits ผู้ใช้
+            await _supabase.from('profiles').update({ credits: newCredits }).eq('id', userId);
+
+            // อัปเดตสถานะ topup พร้อมบันทึกจำนวนเงินจริง
+            await _supabase.from('topup_history').update({
+                status: 'สำเร็จ',
+                amount: amount,
+                credits_added: creditsToAdd
+            }).eq('id', topupId);
+
+            alert(`✅ อนุมัติสำเร็จ! เพิ่ม ${creditsToAdd} Credits ให้ผู้ใช้แล้ว\nเครดิตรวม: ${newCredits} Credits`);
+            loadTopups();
+            loadDashboard();
+        } catch (e) {
+            alert('❌ เกิดข้อผิดพลาด: ' + e.message);
+        }
+    }
+
+    async function rejectTopup(topupId) {
+        if (!confirm('ยืนยันการปฏิเสธคำขอเติมเงินนี้?')) return;
+        try {
+            await _supabase.from('topup_history').update({ status: 'ปฏิเสธ' }).eq('id', topupId);
+            alert('✅ ปฏิเสธคำขอเติมเงินเรียบร้อยแล้วครับ');
+            loadTopups();
+        } catch (e) {
+            alert('❌ เกิดข้อผิดพลาด: ' + e.message);
+        }
+    }
+</script>
+</body>
+</html>
