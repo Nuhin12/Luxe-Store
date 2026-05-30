@@ -1,5 +1,3 @@
-const FormData = require('form-data');
-
 const SLIPOK_API_KEY = 'SLIPOKC7O4X5X';
 const SLIPOK_BRANCH_ID = '67047';
 
@@ -23,27 +21,30 @@ exports.handler = async function(event) {
         }
 
         const imageBuffer = Buffer.from(imageBase64, 'base64');
-        const form = new FormData();
-        form.append('files', imageBuffer, {
-            filename: 'slip.jpg',
-            contentType: mimeType || 'image/jpeg',
-            knownLength: imageBuffer.length
-        });
+        const boundary = '----SlipBoundary' + Date.now();
 
-        const fetch = require('node-fetch');
-        const slipokRes = await fetch(
+        const partHeader = Buffer.from(
+            `--${boundary}\r\nContent-Disposition: form-data; name="files"; filename="slip.jpg"\r\nContent-Type: ${mimeType || 'image/jpeg'}\r\n\r\n`,
+            'utf8'
+        );
+        const partFooter = Buffer.from(`\r\n--${boundary}--\r\n`, 'utf8');
+        const formBody = Buffer.concat([partHeader, imageBuffer, partFooter]);
+
+        const response = await fetch(
             `https://api.slipok.com/api/line/apikey/${SLIPOK_BRANCH_ID}`,
             {
                 method: 'POST',
                 headers: {
                     'x-authorization': SLIPOK_API_KEY,
-                    ...form.getHeaders()
+                    'Content-Type': `multipart/form-data; boundary=${boundary}`
                 },
-                body: form
+                body: formBody
             }
         );
 
-        const slipData = await slipokRes.json();
+        const slipData = await response.json();
+        console.log('SlipOk:', JSON.stringify(slipData));
+
         return { statusCode: 200, headers, body: JSON.stringify(slipData) };
 
     } catch (err) {
